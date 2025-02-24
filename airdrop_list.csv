@@ -1,0 +1,6 @@
+pubkey                                      , amount_unlocked, amount_locked, category
+1111111QLbz7JHiBTspS962RLKV8GndWFwiEaqKM    , 0              , 1500000      , Staker
+1111111ogCyDbaRMvkdsHB3qfdyFYaG1WtRUAfdh    , 0              , 2000000      , Staker
+11111112D1oxKts8YPdTJRG5FzxTNpMtWmq8hkVx3   , 0              , 1000000      , Staker
+11111112cMQwSC9qirWGjZM6gLGwW69X22mqwLLGP   , 0              , 500000       , Staker
+5SEpbdjFK5FxwTvfsGMXVQTD2v4M2c5tyRTxhdsPkgDw, 400000         , 800          , Staker
