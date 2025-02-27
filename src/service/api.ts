@@ -1,7 +1,5 @@
 import axios, { AxiosError } from 'axios'
-
-const BASE_URL =
-  'https://staging-api-public.streamflow.finance/v2/api/airdrops/'
+const BASE_URL = import.meta.env.VITE_BASE_URL
 
 const api = axios.create({
   baseURL: BASE_URL,

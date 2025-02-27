@@ -18,11 +18,13 @@ const AirdropDashboard: React.FC = () => {
   const [client, setClient] = useState<SolanaDistributorClient | null>(null)
   const [filteredAirdrops, setFilteredAirdrops] = useState<any[]>([])
   const [loading, setLoading] = useState<boolean>(false)
+
+  const clusterUrl = import.meta.env.VITE_CLUSTER_URL
   useEffect(() => {
     setConnection(new Connection(clusterApiUrl('devnet'), 'confirmed'))
     setClient(
       new SolanaDistributorClient({
-        clusterUrl: 'https://api.devnet.solana.com',
+        clusterUrl: `${clusterUrl}`,
         cluster: ICluster.Devnet,
       })
     )
