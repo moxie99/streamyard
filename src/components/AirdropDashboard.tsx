@@ -2,99 +2,231 @@
 import React, { useState, useEffect } from 'react'
 import { Connection, PublicKey, clusterApiUrl } from '@solana/web3.js'
 import Button from './button'
+import { ICluster } from '@streamflow/common'
 
+import { SolanaDistributorClient } from '@streamflow/distributor/solana'
+import BN from 'bn.js'
+import AirdropCard from './AirdropCard'
+import Loader from './Loader'
+import { apiService } from '@/service/api'
 const AirdropDashboard: React.FC = () => {
   const [wallet, setWallet] = useState<any>(null)
   const [airdropId, setAirdropId] = useState('')
-  const [airdropDetails, setAirdropDetails] = useState<any>(null)
+  const [allAirdrops, setAllAirdrops] = useState<any[]>([])
   const [connection, setConnection] = useState<Connection | null>(null)
   const [showModal, setShowModal] = useState(false)
-
+  const [client, setClient] = useState<SolanaDistributorClient | null>(null)
+  const [filteredAirdrops, setFilteredAirdrops] = useState<any[]>([])
+  const [loading, setLoading] = useState<boolean>(false)
   useEffect(() => {
     setConnection(new Connection(clusterApiUrl('devnet'), 'confirmed'))
+    setClient(
+      new SolanaDistributorClient({
+        clusterUrl: 'https://api.devnet.solana.com',
+        cluster: ICluster.Devnet,
+      })
+    )
   }, [])
-
   const connectWallet = async () => {
     if (!window.solana || !window.solana.isPhantom) {
       setShowModal(true)
       return
     }
     try {
+      setLoading(true)
       const provider = window.solana
       await provider.connect()
       setWallet(provider)
-      console.log('Wallet connected:', provider.publicKey.toString())
     } catch (err) {
       console.error('Connection failed:', err)
+    } finally {
+      setLoading(false)
     }
   }
 
-  const fetchAirdropDetails = async () => {
-    const data = {
-      type: 'Instant',
-      totalRecipients: 100,
-      claimedRecipients: 50,
-      totalAmount: 10000,
-      claimedAmount: 5000,
-      userAmount: 100,
+  const fetchAllAirdrops = async () => {
+    if (!client || !wallet) return
+    try {
+      setLoading(true)
+      const params = {}
+      const distributors = await client.searchDistributors(params)
+      setAllAirdrops(distributors)
+    } catch (error) {
+      console.error('Error fetching airdrops:', error)
+    } finally {
+      setLoading(false)
     }
-    setAirdropDetails(data)
+  }
+  const claimAirdrop = async (airdropItem: any) => {
+    if (!client || !wallet || !airdropItem) return
+    try {
+      setLoading(true)
+      const solanaParams = { invoker: wallet }
+      const claimRes = await client.claim(
+        {
+          id: airdropItem?.address?.toString(),
+          proof: airdropItem?.merkleRoot,
+          amountUnlocked: new BN(airdropItem?.totalAmountUnlocked?.toString()),
+          amountLocked: new BN(airdropItem?.totalAmountLocked?.toString()),
+        },
+        solanaParams
+      )
+      console.log('Claim Result:', claimRes)
+      alert('Airdrop Claimed Successfully!')
+    } catch (error) {
+      console.error('Error claiming airdrop:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  console.log(wallet?.publicKey?.toString())
+  // create airdrops
+  const createAirdrops = async () => {
+    if (!client || !wallet) {
+      console.log('Skipping airdrop creation - client or wallet missing.')
+      return
+    }
+    try {
+      console.log('Starting airdrop creation...')
+      const now = Math.floor(Date.now() / 1000)
+      const solanaParams = { invoker: wallet }
+      const airdropPromises = Array.from({ length: 10 }, async (_, index) => {
+        return client.create(
+          {
+            mint: 'Gssm3vfi8s65R31SBdmQRq6cKeYojGgup7whkw4VCiQj',
+            version: now + index,
+            root: new Array(32)
+              .fill(0)
+              .map(() => Math.floor(Math.random() * 256)),
+            maxNumNodes: 4,
+            maxTotalClaim: new BN('4000000000'),
+            unlockPeriod: 1,
+            startVestingTs: now,
+            endVestingTs: now + 3600 * 24 * 7,
+            clawbackStartTs: now + 5,
+            claimsClosableByAdmin: false,
+            claimsClosableByClaimant: false,
+            claimsLimit: null,
+          },
+          solanaParams
+        )
+      })
+      const results = await Promise.all(airdropPromises)
+      console.log('Airdrops created: ===>>>>>>>>', results)
+    } catch (error) {
+      console.error('Error creating airdrops:', error)
+    }
+  }
+
+  useEffect(() => {
+    fetchAllAirdrops()
+  }, [wallet])
+
+  // useEffect(() => {
+  //   if (!airdropId) {
+  //     setLoading(true)
+  //     setFilteredAirdrops(allAirdrops)
+  //     setLoading(false)
+  //     return
+  //   }
+  //   const timeout = setTimeout(() => {
+  //     setLoading(true)
+  //     const filtered = allAirdrops.filter((airdrop) =>
+  //       airdrop?.publicKey?.toString().includes(airdropId)
+  //     )
+  //     setFilteredAirdrops(filtered)
+  //     setLoading(false)
+  //   }, 3000)
+
+  //   return () => clearTimeout(timeout)
+  // }, [airdropId, allAirdrops])
+
+  const fetchAirdropByAddress = async () => {
+    if (!airdropId) {
+      console.log('Please enter an address.')
+      return
+    }
+    try {
+      setLoading(true)
+      const response = await apiService.get<any>('', { addresses: airdropId })
+      setFilteredAirdrops(response)
+    } catch (error) {
+      console.error('Error fetching airdrop:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
-    <div className='p-6 max-w-6xl mx-auto w-full'>
-      <div className='grid grid-cols-1 lg:grid-cols-10 gap-6 lg:flex lg:space-x-6'>
-        <div className='lg:w-1/3 w-full'>
-          <h1 className='text-2xl font-bold mb-4'>Streamflow Airdrop</h1>
-          {!wallet ? (
-            <Button onClick={connectWallet}>Connect Phantom Wallet</Button>
-          ) : (
-            <>
-              <p className='text-green-600 font-bold'>
-                Connected: {wallet.publicKey?.toString()}
-              </p>
-              <input
-                type='text'
-                value={airdropId}
-                onChange={(e) => setAirdropId(e.target.value)}
-                placeholder='Enter Airdrop ID'
-                className='border border-red-500 p-2 rounded w-full mt-4'
-              />
-              <div className='mt-4 flex flex-col md:flex-row md:space-x-2'>
-                <Button onClick={fetchAirdropDetails} className='mb-2 md:mb-0'>
-                  Fetch Airdrop
-                </Button>
-                <Button
-                  onClick={() => setWallet(null)}
-                  className='bg-red-600 hover:bg-red-700'
-                >
-                  Disconnect
-                </Button>
-              </div>
-            </>
-          )}
-        </div>
-        <div className='lg:w-2/3 w-full'>
-          {airdropDetails && (
-            <div className='border p-4 rounded'>
-              <p>Type: {airdropDetails.type}</p>
-              <p>
-                Recipients: {airdropDetails.claimedRecipients} /{' '}
-                {airdropDetails.totalRecipients}
-              </p>
-              <p>
-                Amount: {airdropDetails.claimedAmount} /{' '}
-                {airdropDetails.totalAmount} Tokens
-              </p>
-              <p>Your Amount: {airdropDetails.userAmount} Tokens</p>
-              {airdropDetails.userAmount > 0 && (
-                <Button className='mt-2'>Claim</Button>
-              )}
+    <div className='flex flex-col lg:flex-row w-full h-screen'>
+      {/* Left Section - Connect Wallet */}
+      <div className='w-full lg:w-1/2 h-1/2 lg:h-full flex flex-col items-center justify-center bg-gray-900 text-white p-6'>
+        <h1 className='text-3xl font-bold mb-4'>Streamflow Airdrop</h1>
+        {!wallet ? (
+          <Button
+            onClick={connectWallet}
+            className='bg-blue-500 hover:bg-blue-600 p-3 rounded-md'
+          >
+            Connect Phantom Wallet
+          </Button>
+        ) : (
+          <>
+            <p className='text-green-500 font-bold mb-4'>
+              Connected: {wallet?.publicKey?.toString()}
+            </p>
+            <input
+              type='text'
+              value={airdropId}
+              onChange={(e) => setAirdropId(e.target.value)}
+              placeholder='Enter Airdrop ID'
+              className='border border-gray-400 p-3 rounded-md w-3/4 mb-4 text-white'
+            />
+            <div className='flex flex-col space-y-2 md:space-y-0 md:flex-row md:space-x-2'>
+              <Button
+                className='bg-green-500 hover:bg-green-600'
+                onClick={fetchAirdropByAddress}
+              >
+                Fetch Airdrop
+              </Button>
+              <Button
+                onClick={() => {
+                  setWallet(null)
+                  setFilteredAirdrops([]) // Clear filtered airdrops
+                  setAllAirdrops([]) // Clear all airdrops
+                }}
+                className='bg-red-600 hover:bg-red-700'
+              >
+                Disconnect
+              </Button>
             </div>
-          )}
-        </div>
+          </>
+        )}
       </div>
+
+      {/* Right Section - Airdrop Display */}
+      <div className='w-full lg:w-1/2 h-1/2 lg:h-full flex flex-col items-center bg-gray-800 text-white p-6'>
+        {loading ? (
+          <div className='flex items-center justify-center h-full'>
+            <Loader />
+          </div>
+        ) : filteredAirdrops?.length > 0 ? (
+          <div className='w-full max-h-[80vh] overflow-y-auto scrollbar-hidden grid grid-cols-1 md:grid-cols-2 gap-6'>
+            {filteredAirdrops?.map((airdrop, index) => (
+              <AirdropCard
+                key={index}
+                airdrop={airdrop}
+                isPress={() => claimAirdrop(airdrop)}
+                loading={loading}
+              />
+            ))}
+          </div>
+        ) : (
+          <p className='text-gray-400 text-lg'>
+            No airdrops available right now.
+          </p>
+        )}
+      </div>
+
       {showModal && (
         <div className='fixed inset-0 flex items-center justify-center bg-black bg-opacity-50'>
           <div className='bg-white p-6 rounded shadow-md'>
