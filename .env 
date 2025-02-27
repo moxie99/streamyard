@@ -1,3 +1,0 @@
-VITE_BASE_URL=https://staging-api-public.streamflow.finance/
-VITE_API_URL=https://api-public.streamflow.finance/v2/airdrops/create_distributor
-VITE_API_KEY=your_api_key_here
