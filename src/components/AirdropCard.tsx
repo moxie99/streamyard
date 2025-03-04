@@ -13,7 +13,6 @@ import { formatTokenAmount } from '@/utils/helpers'
 import axios from 'axios'
 
 export default function AirdropCard({ airdrop, isPress, loading }: any) {
-  const coingeckoApi = import.meta.env.VITE_COINGECKO_API
   const [isOpen, setIsOpen] = useState(false)
   const [solPrice, setSolPrice] = useState<number | null>(null)
 
@@ -22,7 +21,7 @@ export default function AirdropCard({ airdrop, isPress, loading }: any) {
     const fetchSolPrice = async () => {
       try {
         const response = await axios.get(
-          `${coingeckoApi}?ids=solana&vs_currencies=usd`
+          `https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd`
         )
         setSolPrice(response.data.solana.usd)
       } catch (error) {
