@@ -3,17 +3,20 @@ import React, { useState, useEffect } from 'react'
 import { Connection, PublicKey, clusterApiUrl } from '@solana/web3.js'
 import Button from './button'
 import { ICluster } from '@streamflow/common'
-
+import { Copy } from 'lucide-react'
 import { SolanaDistributorClient } from '@streamflow/distributor/solana'
 import BN from 'bn.js'
 import AirdropCard from './AirdropCard'
 import Loader from './Loader'
 import { apiService } from '@/service/api'
+import WalletToast from './Toast'
 const AirdropDashboard: React.FC = () => {
   const [wallet, setWallet] = useState<any>(null)
+  const [showToast, setShowToast] = useState(false)
   const [airdropId, setAirdropId] = useState('')
   const [allAirdrops, setAllAirdrops] = useState<any[]>([])
   const [connection, setConnection] = useState<Connection | null>(null)
+  const [allStreams, setAllStreams] = useState<any[]>([])
   const [showModal, setShowModal] = useState(false)
   const [client, setClient] = useState<SolanaDistributorClient | null>(null)
   const [filteredAirdrops, setFilteredAirdrops] = useState<any[]>([])
@@ -34,11 +37,15 @@ const AirdropDashboard: React.FC = () => {
       setShowModal(true)
       return
     }
+
     try {
       setLoading(true)
       const provider = window.solana
-      await provider.connect()
-      setWallet(provider)
+      await provider.disconnect() // Ensure login prompt appears
+      const response = await provider.connect({ onlyIfTrusted: false })
+
+      setWallet(response)
+      setShowToast(true) // Show toast on successful login
     } catch (err) {
       console.error('Connection failed:', err)
     } finally {
@@ -52,7 +59,7 @@ const AirdropDashboard: React.FC = () => {
       setLoading(true)
       const params = {}
       const distributors = await client.searchDistributors(params)
-      setAllAirdrops(distributors)
+      setFilteredAirdrops(distributors)
     } catch (error) {
       console.error('Error fetching airdrops:', error)
     } finally {
@@ -82,6 +89,7 @@ const AirdropDashboard: React.FC = () => {
     }
   }
 
+  console.log(filteredAirdrops[0], '[[[[[]]000099999]]]]]]]=')
   // create airdrops
   const createAirdrops = async () => {
     if (!client || !wallet) {
@@ -124,25 +132,6 @@ const AirdropDashboard: React.FC = () => {
     fetchAllAirdrops()
   }, [wallet])
 
-  // useEffect(() => {
-  //   if (!airdropId) {
-  //     setLoading(true)
-  //     setFilteredAirdrops(allAirdrops)
-  //     setLoading(false)
-  //     return
-  //   }
-  //   const timeout = setTimeout(() => {
-  //     setLoading(true)
-  //     const filtered = allAirdrops.filter((airdrop) =>
-  //       airdrop?.publicKey?.toString().includes(airdropId)
-  //     )
-  //     setFilteredAirdrops(filtered)
-  //     setLoading(false)
-  //   }, 3000)
-
-  //   return () => clearTimeout(timeout)
-  // }, [airdropId, allAirdrops])
-
   const fetchAirdropByAddress = async () => {
     if (!airdropId) {
       console.log('Please enter an address.')
@@ -159,6 +148,15 @@ const AirdropDashboard: React.FC = () => {
     }
   }
 
+  const shortenAddress = (address: string) => {
+    return address ? `${address.slice(0, 5)}...${address.slice(-4)}` : ''
+  }
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text)
+    alert('Wallet address copied to clipboard!')
+  }
+
   return (
     <div className='flex flex-col lg:flex-row w-full h-screen'>
       {/* Left Section - Connect Wallet */}
@@ -173,8 +171,14 @@ const AirdropDashboard: React.FC = () => {
           </Button>
         ) : (
           <>
-            <p className='text-green-500 font-bold mb-4'>
-              Connected: {wallet?.publicKey?.toString()}
+            <p className='text-green-500 font-bold mb-4 flex items-center space-x-2'>
+              Connected: {shortenAddress(wallet?.publicKey?.toString() || '')}
+              <Copy
+                className='w-5 h-5 cursor-pointer hover:text-green-300 transition'
+                onClick={() =>
+                  copyToClipboard(wallet?.publicKey?.toString() || '')
+                }
+              />
             </p>
             <input
               type='text'
@@ -226,6 +230,13 @@ const AirdropDashboard: React.FC = () => {
           <p className='text-gray-400 text-lg'>
             No airdrops available right now.
           </p>
+        )}
+        {wallet && showToast && (
+          <WalletToast
+            walletAddress={wallet.publicKey.toString()}
+            show={showToast}
+            onClose={() => setShowToast(false)}
+          />
         )}
       </div>
 
