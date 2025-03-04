@@ -89,8 +89,6 @@ const AirdropDashboard: React.FC = () => {
     }
   }
 
-  console.log(filteredAirdrops[0], '[[[[[]]000099999]]]]]]]=')
-  // create airdrops
   const createAirdrops = async () => {
     if (!client || !wallet) {
       console.log('Skipping airdrop creation - client or wallet missing.')
