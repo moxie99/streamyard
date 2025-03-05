@@ -70,10 +70,18 @@ const AirdropDashboard: React.FC = () => {
       const solanaParams = { invoker: wallet }
       const claimRes = await client.claim(
         {
-          id: airdropItem?.address?.toString(),
-          proof: airdropItem?.merkleRoot,
-          amountUnlocked: new BN(airdropItem?.totalAmountUnlocked?.toString()),
-          amountLocked: new BN(airdropItem?.totalAmountLocked?.toString()),
+          id:
+            airdropItem?.address?.toString() ||
+            airdropItem?.publicKey?.toString(),
+          proof: airdropItem?.merkleRoot || airdropItem?.account?.root,
+          amountUnlocked: new BN(
+            airdropItem?.totalAmountUnlocked?.toString() ||
+              airdropItem?.account?.totalAmountUnlocked?.toString()
+          ),
+          amountLocked: new BN(
+            airdropItem?.totalAmountLocked?.toString() ||
+              airdropItem?.account?.totalAmountLocked?.toString()
+          ),
         },
         solanaParams
       )
@@ -152,6 +160,7 @@ const AirdropDashboard: React.FC = () => {
     alert('Wallet address copied to clipboard!')
   }
 
+  console.log(filteredAirdrops[0]?.publicKey?.toString(), '=======:::::::::')
   return (
     <div className='flex flex-col lg:flex-row w-full h-screen'>
       {/* Left Section - Connect Wallet */}
